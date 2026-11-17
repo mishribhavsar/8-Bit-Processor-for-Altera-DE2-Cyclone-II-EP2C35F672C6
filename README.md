@@ -2,13 +2,15 @@
 
 An 8-bit RISC processor in Verilog HDL, built as **three microarchitectures of one ISA**. The three cores run side by side on an Altera DE2 board.
 
+![Overview](docs/images/overview.png)
+
 | Core | File | What it is |
 |---|---|---|
 | Single-cycle | `rtl/processor.v` | CPI = 1, combinational MUL/DIV |
 | 3-stage pipeline | `rtl/processor_pipe.v` | IF / ID / EX, forwarding, early JMP resolution, branch flush, stall on the multi-cycle MUL/DIV unit |
 | **Out-of-order** | `rtl/processor_ooo.v` | Tomasulo + reorder buffer, **register renaming that includes the FLAGS register**, 3 reservation stations, common data bus, static BTFN prediction, precise recovery |
 
-**Headline result:** across three loop benchmarks, the out-of-order core runs **1.14–1.67× faster** than the in-order pipeline (geometric mean 1.40×). On the multiply-bound loop (CPI 2.82 → 1.68), it reaches the throughput limit of its single 9-cycle multiply/divide unit.
+**Headline result:** across three loop benchmarks, the out-of-order core needs **1.14–1.67× fewer clock cycles** than the in-order pipeline (geometric mean 1.40×). On the multiply-bound loop (CPI 2.82 → 1.68), it reaches the throughput limit of its single 9-cycle multiply/divide unit.
 
 **Why flag renaming matters:** with renaming turned off (`FLAG_RENAME = 0`), the same out-of-order core's CPI rises to 2.00–3.22, **slower than the in-order pipeline on all three benchmarks**. The five x86-style condition flags make every ALU instruction a producer of a new flags value, so renaming FLAGS is what lets out-of-order execution pay off with this ISA.
 
@@ -32,7 +34,7 @@ risc8/
 │   ├── pc.v               program counter
 │   ├── muldiv.v           iterative MUL/DIV unit (9 cycles)
 │   ├── Controlunit.v      instruction decoder (shared)
-│   ├── ALU.v              15 operations, 5 flags (shared)
+│   ├── ALU.v              15 operations, 5 flags (shared; MUL/DIV optional)
 │   ├── Register.v         4 x 8 register file (shared)
 │   ├── memory.v           256 x 16 instruction ROM
 │   └── data_mem.v         256 x 8 RAM + I/O at 0xFE / 0xFF
@@ -50,9 +52,9 @@ risc8/
 
 All numbers come from `tb_bench`, which runs the three cores on the same program and checks each against the reference model.
 
-The single-cycle core uses a combinational multiply/divide (CPI = 1, but a very long critical path). The pipeline and the out-of-order core share the same 9-cycle iterative unit, so their comparison is like-for-like.
+The single-cycle core uses a combinational multiply/divide (CPI = 1, but a very long critical path). The pipeline and the out-of-order core share the same 9-cycle iterative unit, so their comparison is like-for-like. Their ALUs are instantiated with `MULDIV = 0`, so the combinational multiplier and divider are not built in those two cores.
 
-| Benchmark (N) | Instr. | Pipeline CPI | OoO CPI | OoO speed-up | OoO CPI, flag renaming **off** |
+| Benchmark (N) | Instr. | Pipeline CPI | OoO CPI | OoO speed-up (cycles) | OoO CPI, flag renaming **off** |
 |---|---|---|---|---|---|
 | `alu_loop` (100) | 507 | 1.39 | **1.21** | 1.14× | 2.00 |
 | `mul_loop` (100) | 598 | 2.82 | **1.68** | **1.67×** | 3.16 |
@@ -205,6 +207,9 @@ Run `./sim/run_iverilog.sh` (about 40 s), or `do run_modelsim.do` from `sim/` in
 
 ## Version history
 
+- **v3.1:**
+  - `ALU` parameter `MULDIV`; the pipeline and out-of-order cores build their ALU without the unused combinational MUL/DIV.
+  - Overview figure (`docs/images/overview.png`).
 - **v3:**
   - Out-of-order core (Tomasulo + ROB + flag renaming, BTFN prediction).
   - Iterative MUL/DIV unit; the pipeline stalls on it.

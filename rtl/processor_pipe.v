@@ -83,7 +83,7 @@ module processor_pipe #(
     wire [7:0] alu_y;
     wire       a_zf, a_pf, a_cf, a_of, a_af;
 
-    ALU ALU_inst (
+    ALU #(.MULDIV(0)) ALU_inst (
         .a(opa_e), .b(opb_e), .op(alu_op_e), .result(alu_y),
         .zf(a_zf), .pf(a_pf), .cf(a_cf), .of(a_of), .af(a_af)
     );

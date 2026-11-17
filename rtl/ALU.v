@@ -1,7 +1,9 @@
 `timescale 1ns/1ps
 // 8-bit ALU: 15 operations + NOP, flags {AF, OF, CF, PF, ZF}
 // a = Rd, b = Rs. PF = even parity, AF = carry/borrow out of bit 3.
-module ALU (
+module ALU #(
+    parameter MULDIV = 1         // 0: MUL/DIV handled by muldiv.v
+) (
     input      [7:0] a,          // Rd
     input      [7:0] b,          // Rs
     input      [3:0] op,         // operation select (= opcode)
@@ -22,7 +24,7 @@ module ALU (
     reg         sub;
     wire [8:0]  sum = sub ? ({1'b0, a} - {1'b0, add_b})
                           : ({1'b0, a} + {1'b0, add_b});
-    wire [15:0] prod = a * b;
+    wire [15:0] prod = MULDIV ? a * b : 16'h0000;
 
     always @(*) begin
         // operand for the adder
@@ -53,12 +55,12 @@ module ALU (
             OP_LSR: begin result = {1'b0, a[7:1]}; cf = a[0]; of = a[7];        end
             OP_ROR: begin result = {a[0], a[7:1]}; cf = a[0];                   end
             OP_ROL: begin result = {a[6:0], a[7]}; cf = a[7];                   end
-            OP_MUL: begin
+            OP_MUL: if (MULDIV) begin
                 result = prod[7:0];
                 cf     = |prod[15:8];
                 of     = |prod[15:8];
             end
-            OP_DIV: begin
+            OP_DIV: if (MULDIV) begin
                 if (b == 8'd0) begin
                     result = 8'h00;
                     of     = 1'b1;                             // divide-by-zero

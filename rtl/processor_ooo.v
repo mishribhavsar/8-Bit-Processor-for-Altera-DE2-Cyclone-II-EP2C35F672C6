@@ -268,7 +268,7 @@ module processor_ooo #(
     wire [4:0] x_op = ra_op[ra_sel];
     wire [7:0] x_y;
     wire       x_zf, x_pf, x_cf, x_of, x_af;
-    ALU ALU_inst (
+    ALU #(.MULDIV(0)) ALU_inst (
         .a(ra_av[ra_sel]), .b(ra_bv[ra_sel]), .op(x_op[3:0]), .result(x_y),
         .zf(x_zf), .pf(x_pf), .cf(x_cf), .of(x_of), .af(x_af)
     );
