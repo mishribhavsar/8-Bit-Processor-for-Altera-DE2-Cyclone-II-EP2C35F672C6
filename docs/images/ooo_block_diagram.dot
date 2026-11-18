@@ -1,0 +1,36 @@
+digraph ooo {
+  rankdir=LR; ordering=out; nodesep=0.35; ranksep=0.55;
+  node [shape=box, fontname="Helvetica", fontsize=11, height=0.5];
+  edge [fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  ROM    [label="Instruction ROM\n256 x 16"];
+  FETCH  [label="Fetch\nPC, fetch buffer\nJMP / BTFN redirect"];
+  DISP   [label="Dispatch + rename\nRAT: R0-R3, FLAGS"];
+  RSA    [label="RS_ALU (4)"];
+  RSM    [label="RS_MD (2)"];
+  RSL    [label="RS_LS (4)"];
+  ALU    [label="ALU\n1 cycle"];
+  MD     [label="MUL/DIV\n9 cycles"];
+  LS     [label="Load / store"];
+  CDB    [label="CDB\n1 result / cycle\noldest first", style=filled, fillcolor="#e8e8e8"];
+  ROB    [label="Reorder buffer\n8 entries"];
+  COMMIT [label="Commit\nin order"];
+  ARCH   [label="Register file 4 x 8\nFLAGS\nData RAM 256 x 8, I/O"];
+
+  {rank=same; RSA; RSM; RSL;}
+  {rank=same; ALU; MD; LS;}
+
+
+
+  ROM -> FETCH -> DISP;
+  DISP -> RSA; DISP -> RSM; DISP -> RSL;
+  RSA -> ALU; RSM -> MD; RSL -> LS;
+  ALU -> CDB; MD -> CDB; LS -> CDB;
+  CDB -> ROB;
+  ROB -> COMMIT -> ARCH;
+  DISP -> ROB [constraint=false];
+  CDB -> RSA [style=dashed, constraint=false, xlabel="wake-up"];
+  CDB -> RSM [style=dashed, constraint=false];
+  CDB -> RSL [style=dashed, constraint=false];
+  COMMIT -> FETCH [style=dashed, constraint=false, xlabel="mispredict: flush"];
+}

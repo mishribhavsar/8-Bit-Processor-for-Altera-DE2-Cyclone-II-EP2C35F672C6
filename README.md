@@ -2,8 +2,6 @@
 
 An 8-bit RISC processor in Verilog HDL, built as **three microarchitectures of one ISA**. The three cores run side by side on an Altera DE2 board.
 
-![Overview](docs/images/overview.png)
-
 | Core | File | What it is |
 |---|---|---|
 | Single-cycle | `rtl/processor.v` | CPI = 1, combinational MUL/DIV |
@@ -41,6 +39,7 @@ risc8/
 ├── bench/          benchmark programs (alu_loop, mul_loop, muldiv_mix)
 ├── board/          DE2 wrapper running all three cores
 ├── docs/ooo_design.md   how the out-of-order core works, step by step
+├── docs/images/   README figures (block diagram source in .dot)
 ├── mem/            program.asm -> program.hex (board demo)
 ├── tools/asm.py    two-pass assembler
 ├── tb/             testbenches, reference model, directed hazard program
@@ -59,6 +58,8 @@ The single-cycle core uses a combinational multiply/divide (CPI = 1, but a very 
 | `alu_loop` (100) | 507 | 1.39 | **1.21** | 1.14× | 2.00 |
 | `mul_loop` (100) | 598 | 2.82 | **1.68** | **1.67×** | 3.16 |
 | `muldiv_mix` (100) | 895 | 3.21 | **2.23** | 1.43× | 3.22 |
+
+![CPI per benchmark](docs/images/cpi_benchmarks.png)
 
 **What the numbers mean:**
 - **`mul_loop`:** the out-of-order core needs about 10 cycles per iteration. That's the throughput limit of the single multiply/divide unit (9 cycles plus the CDB handshake), so the core keeps that unit busy all the time. The pipeline needs about 17 cycles per iteration.
@@ -116,14 +117,7 @@ Fetch, decode, operand read, ALU or memory, write-back and next PC all happen in
 
 ### Out-of-order (Tomasulo + ROB)
 
-```
- fetch -> dispatch --------------------------------------------> ROB (8) --> commit
-           | rename (RAT: R0-R3 + FLAGS)                          ^  in order
-           v                                                      |
-   RS_ALU (4) --> ALU (1 cyc) ----\                               |
-   RS_MD  (2) --> MUL/DIV (9 cyc) --> CDB (1/cycle, oldest first) +--> wake up RS
-   RS_LS  (4) --> load/store -----/
-```
+![Out-of-order core](docs/images/ooo_block_diagram.png)
 
 - **Dispatch (in order):**
   - allocate a ROB entry;
@@ -145,6 +139,10 @@ Fetch, decode, operand read, ALU or memory, write-back and next PC all happen in
   - HLT stops the core.
 
 `docs/ooo_design.md` walks through one loop iteration cycle by cycle.
+
+![mul_loop on the out-of-order core in GTKWave](docs/images/mul_loop_waveform.png)
+
+`mul_loop` in GTKWave (`tb_trace_ooo` with `tb/wave_trace_ooo.v`). The MUL with tag 4 holds the MUL/DIV unit for 9 cycles while INC, CMP and BNE issue and broadcast on the CDB; the next iteration's MUL (tag 2) issues in the cycle after the unit frees.
 
 ## Verification
 
@@ -209,7 +207,7 @@ Run `./sim/run_iverilog.sh` (about 40 s), or `do run_modelsim.do` from `sim/` in
 
 - **v3.1:**
   - `ALU` parameter `MULDIV`; the pipeline and out-of-order cores build their ALU without the unused combinational MUL/DIV.
-  - Overview figure (`docs/images/overview.png`).
+  - Figures in `docs/images/`: out-of-order block diagram (Graphviz source included), CPI chart, GTKWave trace of `mul_loop`.
 - **v3:**
   - Out-of-order core (Tomasulo + ROB + flag renaming, BTFN prediction).
   - Iterative MUL/DIV unit; the pipeline stalls on it.
